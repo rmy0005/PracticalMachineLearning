@@ -1,0 +1,85 @@
+---
+title: "Prediction Assignment"
+author: "Manohar Reddy"
+date: "October 2, 2016"
+output: html_document
+---
+
+### Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+In this project, the goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants toto predict the manner in which praticipants did the exercise.
+
+The dependent variable or response is the "classe" variable in the training set.
+
+### Loading Data
+
+The training and testing data are downloaded to data folder from 
+https://d396qusza40orc.cloudfront.net/predmachlearn/
+
+``` {r echo=TRUE}
+# Load libraries, data and test data
+
+library(caret)
+library(corrplot)
+
+
+pml_training <- read.csv("data/pml-training.csv", na.strings=c("NA",""), strip.white=T)
+pml_testing <- read.csv("data/pml-testing.csv", na.strings=c("NA",""), strip.white=T)
+
+dim(pml_training)
+dim(pml_testing)
+names(pml_training)
+```
+
+The training data has 19622 rows and 160 columns. Testing data has 20 rows and 160 columns.
+
+### Cleaning Data
+
+``` {r echo=TRUE}
+# Remove NAs from the data
+
+isNA <- apply(pml_training, 2, function(x) { sum(is.na(x)) })
+pml_training_valid <- subset(pml_training[, which(isNA == 0)], 
+                    select=-c(X, user_name, new_window, num_window, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp))
+
+isNA <- apply(pml_testing, 2, function(x) { sum(is.na(x)) })
+pml_testing_valid <- subset(pml_testing[, which(isNA == 0)], 
+                    select=-c(X, user_name, new_window, num_window, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp))
+
+dim(pml_training_valid)
+dim(pml_testing_valid)
+
+inTraining <- createDataPartition(pml_training_valid$classe, p=0.7, list=F)
+training <- pml_training_valid[inTraining,]
+testing <- pml_training_valid[-inTraining,]
+
+```
+
+### Train Model
+
+``` {r echo=TRUE}
+
+modFit <- train(classe ~., method="rf", data=training, trControl=trainControl(method='cv'), number=5, allowParallel=TRUE )
+
+trainingPred <- predict(modFit, training)
+
+confusionMatrix(trainingPred, training$classe)
+
+# Testing Set
+testingPred <- predict(modFit, testing)
+confusionMatrix(testingPred, testing$classe)
+
+```
+
+### Results
+
+Predictions on the real testing data
+
+``` {r echo=TRUE}
+
+testingPred <- predict(modFit, pml_testing_valid)
+testingPred
+
+```
